@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 from datetime import timedelta
+from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
@@ -21,6 +22,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Path to cookies file (will be created by entrypoint.sh if YT_DLP_COOKIES env var is set)
+COOKIES_FILE = Path("/app/cookies.txt")
+HAS_COOKIES = COOKIES_FILE.exists()
+
+# Helper to get yt-dlp options with optional cookies
+def get_ydl_opts(base_opts=None):
+    opts = base_opts or {}
+    if HAS_COOKIES:
+        opts["cookiefile"] = str(COOKIES_FILE)
+    return opts
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -51,11 +63,11 @@ def fmt_filesize(size):
 
 @app.post("/analyze")
 async def analyze(req: AnalyzeRequest):
-    ydl_opts = {
+    ydl_opts = get_ydl_opts({
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
-    }
+    })
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(req.url, download=False)
@@ -173,7 +185,13 @@ async def download(url: str, format_id: str, ext: str, title: str, abr: int = No
                 "--format", fmt,
                 "--output", "-",
                 "--no-part",
-            ] + postproc_args + [url]
+            ]
+            
+            # Add cookies if available
+            if HAS_COOKIES:
+                cmd.extend(["--cookies", str(COOKIES_FILE)])
+            
+            cmd.extend(postproc_args + [url])
 
             proc = subprocess.Popen(
                 cmd,
