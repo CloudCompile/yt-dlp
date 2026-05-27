@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VDROP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #7c3aed;
+    --accent-glow: rgba(124,58,237,0.15);
+    --cyan: #06b6d4;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --green: #22c55e;
+    --red: #ef4444;
+    --radius-card: 12px;
+    --radius-btn: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 40px 16px 80px;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .wordmark {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 40px;
+  }
+
+  /* Input bar */
+  .input-bar {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px 6px 6px 16px;
+    gap: 10px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .input-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .input-bar svg.link-icon {
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+  .input-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    min-width: 0;
+  }
+  .input-bar input::placeholder { color: var(--muted); }
+  .input-bar input:disabled { opacity: 0.5; }
+
+  .btn-analyze {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 22px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .btn-analyze:hover:not(:disabled) {
+    opacity: 0.9;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .btn-analyze:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Error message */
+  .error-msg {
+    color: var(--red);
+    font-size: 0.85rem;
+    margin-top: 10px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.35s ease; }
+
+  /* Results layout */
+  .results {
+    display: none;
+    margin-top: 36px;
+    gap: 24px;
+  }
+  .results.show {
+    display: flex;
+    flex-direction: row;
+  }
+  .formats-panel { flex: 6; min-width: 0; }
+  .preview-panel { flex: 4; min-width: 0; }
+
+  /* Section headers */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+  .section-header:first-child { margin-top: 0; }
+  .section-header svg { color: var(--muted); }
+
+  /* Format card */
+  .fmt-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    cursor: default;
+  }
+  .fmt-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px var(--accent-glow);
+    border-color: rgba(124,58,237,0.3);
+  }
+
+  .fmt-info { flex: 1; min-width: 0; }
+  .fmt-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .fmt-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .badge {
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+  .badge-cyan { background: rgba(6,182,212,0.15); color: var(--cyan); }
+  .badge-muted { background: rgba(100,116,139,0.15); color: var(--muted); }
+  .badge-size { color: var(--muted); font-size: 0.78rem; }
+
+  .btn-dl {
+    border: none;
+    border-radius: var(--radius-btn);
+    padding: 8px 18px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-dl-green { background: var(--green); color: #fff; }
+  .btn-dl-green:hover:not(:disabled) { opacity: 0.85; box-shadow: 0 0 16px rgba(34,197,94,0.25); }
+  .btn-dl-violet { background: var(--accent); color: #fff; }
+  .btn-dl-violet:hover:not(:disabled) { opacity: 0.85; box-shadow: 0 0 16px var(--accent-glow); }
+  .btn-dl:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Preview panel */
+  .preview-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    position: sticky;
+    top: 20px;
+  }
+  .preview-thumb {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    display: block;
+    background: #1a1a2e;
+  }
+  .preview-body { padding: 16px; }
+  .preview-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .preview-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge-duration {
+    background: rgba(124,58,237,0.2);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .preview-uploader {
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  .spinner-sm {
+    width: 12px; height: 12px;
+    border-width: 2px;
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 999;
+  }
+  .toast {
+    background: #1e1e2e;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    max-width: 320px;
+    animation: slideIn 0.25s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .results.show { flex-direction: column-reverse; }
+    .preview-card { position: static; }
+    body { padding: 24px 12px 60px; }
+    .wordmark { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="wordmark">VDROP</div>
+  <p class="subtitle">Paste any video URL. Pick your format. Done.</p>
+
+  <div class="input-bar" id="inputBar">
+    <svg class="link-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </svg>
+    <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+    <button class="btn-analyze" id="btnAnalyze" onclick="analyze()">
+      <span id="analyzeLabel">Analyze</span>
+    </button>
+  </div>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="results" id="results">
+    <div class="formats-panel" id="formatsPanel"></div>
+    <div class="preview-panel" id="previewPanel"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API = '';
+
+async function analyze() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+
+  const btn = document.getElementById('btnAnalyze');
+  const label = document.getElementById('analyzeLabel');
+  const input = document.getElementById('urlInput');
+  const errorMsg = document.getElementById('errorMsg');
+  const inputBar = document.getElementById('inputBar');
+
+  btn.disabled = true;
+  input.disabled = true;
+  label.innerHTML = '<div class="spinner"></div>';
+  errorMsg.classList.remove('show');
+
+  try {
+    const res = await fetch(`${API}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Analysis failed');
+    renderResults(data);
+  } catch (err) {
+    errorMsg.textContent = err.message;
+    errorMsg.classList.add('show');
+    inputBar.classList.add('shake');
+    inputBar.addEventListener('animationend', () => inputBar.classList.remove('shake'), { once: true });
+  } finally {
+    btn.disabled = false;
+    input.disabled = false;
+    label.textContent = 'Analyze';
+  }
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+
+function renderResults(data) {
+  const results = document.getElementById('results');
+  const formatsPanel = document.getElementById('formatsPanel');
+  const previewPanel = document.getElementById('previewPanel');
+
+  // Preview
+  previewPanel.innerHTML = `
+    <div class="preview-card">
+      ${data.thumbnail ? `<img class="preview-thumb" src="${escHtml(data.thumbnail)}" alt="Thumbnail" onerror="this.style.display='none'">` : ''}
+      <div class="preview-body">
+        <div class="preview-title">${escHtml(data.title)}</div>
+        <div class="preview-meta">
+          <span class="badge-duration">${escHtml(data.duration)}</span>
+          ${data.uploader ? `<span class="preview-uploader">${escHtml(data.uploader)}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Formats
+  const audioFmts = data.formats.filter(f => f.type === 'audio');
+  const videoFmts = data.formats.filter(f => f.type === 'video');
+
+  let html = '';
+
+  if (audioFmts.length) {
+    html += `<div class="section-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Audio
+    </div>`;
+    audioFmts.forEach((f, i) => {
+      html += formatCard(f, `a-${i}`, data.title);
+    });
+  }
+
+  if (videoFmts.length) {
+    html += `<div class="section-header" style="margin-top:20px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>
+      Video
+    </div>`;
+    videoFmts.forEach((f, i) => {
+      html += formatCard(f, `v-${i}`, data.title);
+    });
+  }
+
+  formatsPanel.innerHTML = html;
+  results.classList.add('show');
+}
+
+function formatCard(f, id, title) {
+  const isAudio = f.type === 'audio';
+  const btnClass = isAudio ? 'btn-dl-green' : 'btn-dl-violet';
+  const abrParam = f.abr ? `&abr=${f.abr}` : '';
+
+  let meta = '';
+  if (isAudio) {
+    if (f.abr) meta += `<span class="badge badge-muted">${f.abr}kbps</span>`;
+    meta += `<span class="badge badge-muted">${f.ext.toUpperCase()}</span>`;
+  } else {
+    meta += `<span class="badge badge-cyan">${f.label}</span>`;
+    if (f.vcodec) meta += `<span class="badge badge-muted">${f.vcodec}</span>`;
+    if (f.acodec && f.acodec !== 'none') meta += `<span class="badge badge-muted">${f.acodec}</span>`;
+    meta += `<span class="badge badge-muted">${f.ext.toUpperCase()}</span>`;
+  }
+  if (f.filesize) meta += `<span class="badge-size">${f.filesize}</span>`;
+
+  return `<div class="fmt-card" id="card-${id}">
+    <div class="fmt-info">
+      <div class="fmt-label">${escHtml(f.label)}</div>
+      <div class="fmt-meta">${meta}</div>
+    </div>
+    <button class="btn-dl ${btnClass}" id="btn-${id}"
+      onclick="startDownload('${escAttr(id)}', '${escAttr(f.format_id)}', '${escAttr(f.ext)}', '${escAttr(title)}'${abrParam ? `, ${f.abr}` : ''})">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download
+    </button>
+  </div>`;
+}
+
+function startDownload(id, formatId, ext, title, abr) {
+  const btn = document.getElementById(`btn-${id}`);
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner spinner-sm"></div> Fetching…';
+
+  const url = document.getElementById('urlInput').value.trim();
+  const params = new URLSearchParams({ url, format_id: formatId, ext, title });
+  if (abr) params.set('abr', abr);
+
+  const a = document.createElement('a');
+  a.href = `/download?${params}`;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Reset button after a delay (download is handled by browser)
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = origHTML;
+  }, 4000);
+}
+
+function showToast(msg) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
